@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#17212B" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="PRS V3" />
+  <title>PRS.AssetVerify V3</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css?v=300" />
+  <script src="https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <!-- Scanner decoder is loaded on demand by app.js. This avoids a mobile
+       startup race and retries a fallback CDN if the first endpoint is blocked. -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="dns-prefetch" href="https://unpkg.com" />
+</head>
+<body>
+  <div id="appShell">
+    <header class="topbar">
+      <button id="menuBtn" class="icon-btn hidden" aria-label="Menu">☰</button>
+      <div class="brand-center">
+        <strong>PRS.AssetVerify V3</strong>
+        <span id="companySubtitle" class="company-subtitle"></span>
+      </div>
+      <div class="top-actions">
+        <span id="syncBadge" class="sync-badge hidden">Online</span>
+        <button id="logoutBtn" class="ghost-btn hidden">Logout</button>
+      </div>
+    </header>
+    <button id="viewExitBtn" class="view-exit hidden" aria-label="Close current section" title="Back to Verification">✕</button>
+
+    <aside id="drawer" class="drawer hidden">
+      <div class="drawer-head">
+        <button id="closeDrawerBtn" class="drawer-close" aria-label="Close menu">✕</button>
+        <div class="eyebrow">CURRENT COMPANY</div>
+        <h2 id="drawerCompany">—</h2>
+        <div id="drawerUser" class="muted"></div>
+      </div>
+      <nav class="drawer-nav">
+        <button data-nav="verify" data-permission="verification.view">📷 Verification</button>
+        <button data-nav="search" data-permission="records.search">⌕ Search & Filters</button>
+        <button data-nav="users" data-permission="members.view">👥 Team Members</button>
+        <button data-nav="roles" data-permission="roles.view">🔐 Roles & Permissions</button>
+        <button data-nav="masters" data-permission="masters.view">⚙ Setting & Master</button>
+        <button data-nav="audit" data-permission="audit.view">🧾 Audit Trail</button>
+        <button data-nav="downloadHistory" data-permission="records.export">⬇ Download History</button>
+        <button data-nav="backup" data-permission="backup.manage">💾 Backup & Restore</button>
+        <button data-nav="usage" data-permission="records.view_usage">▰ Usage</button>
+        <button data-nav="editCompany" data-permission="company.edit">✎ Edit Company</button>
+        <button data-nav="switchMember">👤 Switch Team Member</button>
+        <button data-nav="switchCompany">⇄ Switch Company</button>
+        <button data-nav="welcome">⌂ Welcome Page</button>
+      </nav>
+    </aside>
+    <div id="drawerBackdrop" class="drawer-backdrop hidden"></div>
+
+    <main>
+      <section id="welcomeView" class="view welcome-view">
+        <div class="welcome-card">
+          <div class="welcome-logo">PRS.AssetVerify 2.0</div>
+          <h1>PRS Asset Verification App</h1>
+          <p>Create a new company workspace, enter an existing company, or restore a saved company backup.</p>
+          <div class="welcome-actions">
+            <button id="openCreateCompanyBtn" class="primary large">＋ Create Company</button>
+            <button id="openExistingCompanyBtn" class="secondary large">Existing Company</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="createCompanyView" class="view hidden">
+        <div class="page-head">
+          <div><div class="eyebrow">NEW COMPANY</div><h1>Create company workspace</h1></div>
+          <button class="secondary" data-back-welcome>Back</button>
+        </div>
+        <div class="card">
+          <div class="grid two">
+            <label>Company Name *<input id="newCompanyName" placeholder="e.g. ABC Industries Pvt. Ltd." /></label>
+            <label>Assignment Start Date *<input id="newCompanyStartDate" type="date" /></label>
+            <label>Company Username *<input id="newCompanyUsername" autocomplete="username" /></label>
+            <label>Company Password *<input id="newCompanyPassword" type="password" autocomplete="new-password" placeholder="Minimum 6 characters" /></label>
+          </div>
+          <div class="section-title-row top-gap">
+            <div><h2>Team Members & Rights</h2><p>Each member has a personal PIN in addition to the shared company credentials.</p></div>
+            <button id="addCreateMemberBtn" class="secondary">＋ Add Member</button>
+          </div>
+          <div id="createMembers" class="member-editor"></div>
+          <div class="info-box">Forgot Company Password sends a reset code to <strong>mahipal.office21@gmail.com</strong>. The company password itself is never displayed.</div>
+          <button id="createCompanyBtn" class="primary full">Create Company</button>
+        </div>
+      </section>
+
+      <section id="existingCompanyView" class="view hidden">
+        <div class="page-head">
+          <div><div class="eyebrow">COMPANIES</div><h1>Existing companies</h1></div>
+          <button class="secondary" data-back-welcome>Back</button>
+        </div>
+        <div id="companyList" class="company-list"></div>
+        <div id="noCompanies" class="empty hidden">No companies have been created yet.</div>
+      </section>
+
+      <section id="verifyView" class="view hidden">
+        <section class="capture-panel">
+          <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
+          <input id="galleryInput" type="file" accept="image/*" multiple hidden />
+          <input id="scanImageInput" type="file" accept="image/*" multiple hidden />
+          <div class="capture-buttons capture-buttons-v7">
+            <button id="takePhotoBtn" class="primary big-camera" data-permission-button="verification.capture_photo">📷 Take Photo</button>
+            <button id="uploadPhotoBtn" class="secondary big-camera" data-permission-button="verification.upload_gallery">▣ Gallery</button>
+            <button id="scanVerifyBtn" class="secondary big-camera" data-permission-button="verification.scan">▦ Scan & Verify</button>
+          </div>
+          <p class="hint"><strong>Simple verification flow:</strong> click Take Photo / Gallery / Scan & Verify → complete Sticky Fields → Variable Fields appear automatically → review asset details → Save Verification. GPS is detected automatically when available, but Latitude, Longitude and GPS Accuracy remain optional. Every saved record is then available in Export Excel with its photos.</p>
+          <div id="offlineNotice" class="offline-notice hidden">Offline mode active. New verification records will stay safely on this device and sync automatically when internet returns.</div>
+        </section>
+
+        <section class="summary-row">
+          <div class="summary-card"><span id="photoCount">0</span><small>Records</small></div>
+          <div class="summary-card"><span id="assetCount">0</span><small>Asset rows</small></div>
+          <button id="exportBtn" class="success" data-permission-button="records.export">Export Excel</button>
+        </section>
+
+        <div class="card">
+          <div class="section-title-row"><div><h2>Recent Verification Records</h2><p>Shared across authorised members of this company.</p></div></div>
+          <div id="recordList" class="record-list"></div>
+          <div id="recordsEmpty" class="empty">No records saved yet.</div>
+        </div>
+      </section>
+
+      <section id="searchView" class="view hidden">
+        <div class="page-head"><div><div class="eyebrow">VERIFICATION</div><h1>Search & Filters</h1></div></div>
+        <div class="card filter-card">
+          <div class="search-line"><input id="searchText" placeholder="Search asset name, barcode, GPS, location, remarks..." /><button id="clearFiltersBtn" class="secondary">Clear</button></div>
+          <div id="dynamicFilters" class="grid three filter-grid"></div>
+          <div class="grid three filter-grid"><label>Condition<select id="filterCondition"><option value="">All Conditions</option><option>Good</option><option>Fair</option><option>Poor</option><option>Damaged</option><option>Under Repair</option></select></label></div>
+          <div id="statusTabs" class="status-tabs"></div>
+        </div>
+        <div id="searchResults" class="record-list"></div>
+        <div id="searchEmpty" class="empty hidden">No assets match these filters.</div>
+      </section>
+
+      <section id="usersView" class="view hidden">
+        <div class="page-head">
+          <div><div class="eyebrow">ACCESS CONTROL</div><h1>Team Members</h1></div>
+          <button id="addUserBtn" class="primary" data-permission-button="members.create">＋ Add Team Member</button>
+        </div>
+        <div id="userCards" class="user-cards"></div>
+      </section>
+
+      <section id="rolesView" class="view hidden">
+        <div class="page-head">
+          <div><div class="eyebrow">ACCESS CONTROL</div><h1>Roles & Permissions</h1></div>
+          <button id="createRoleBtn" class="primary" data-permission-button="roles.create">＋ Create Role</button>
+        </div>
+        <div class="info-box">System roles are created automatically. Custom roles can be created and assigned to one or more members.</div>
+        <div id="roleCards" class="role-cards"></div>
+      </section>
+
+      <section id="mastersView" class="view hidden">
+        <div class="page-head"><div><div class="eyebrow">CONFIGURATION</div><h1>Setting & Master</h1></div></div>
+        <div class="grid two master-grid">
+          <div class="card">
+            <div class="section-title-row"><div><h2>Sticky Fields</h2><p>Saved between consecutive captures until changed.</p></div><button id="addStickyFieldBtn" class="secondary" data-permission-button="masters.edit">＋ Add</button></div>
+            <div id="stickyMasterList" class="master-list"></div>
+          </div>
+          <div class="card">
+            <div class="section-title-row"><div><h2>Variable Fields</h2><p>Entered or changed for each verification record.</p></div><button id="addVariableFieldBtn" class="secondary" data-permission-button="masters.edit">＋ Add</button></div>
+            <div id="variableMasterList" class="master-list"></div>
+          </div>
+          <div class="card export-column-card">
+            <div class="section-title-row"><div><h2>Excel / System Columns</h2><p>Deactivate any standard export column. Photo is permanently locked. Historical columns remain preserved in the All Records sheet.</p></div></div>
+            <div id="exportColumnMasterList" class="master-list"></div>
+          </div>
+          <div class="card">
+            <h2>Field-history rule</h2>
+            <p class="muted">Deleting or editing a Sticky / Variable field never overwrites its historical Excel column. Version 2.0 creates a new field revision and keeps the old column available for older records.</p>
+            <div class="info-box"><strong>Result:</strong> old values remain auditable, new records use the latest field set, and every export includes a Field History sheet.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="downloadHistoryView" class="view hidden">
+        <div class="page-head">
+          <div><div class="eyebrow">REPORTS</div><h1>Download History</h1><p>Every completed export is stored so both photo and no-photo variants can be downloaded again.</p></div>
+          <button id="refreshDownloadHistoryBtn" class="secondary">Refresh</button>
+        </div>
+        <div class="info-box">Each Excel part is capped at 30 MB. If an export needs multiple parts, one click downloads all parts together as a ZIP.</div>
+        <div id="downloadHistoryList" class="download-history-list"></div>
+        <div id="downloadHistoryEmpty" class="empty">No exports have been created yet.</div>
+      </section>
+
+      <section id="auditView" class="view hidden">
+        <div class="page-head"><div><div class="eyebrow">GOVERNANCE</div><h1>Audit Trail</h1></div><button id="refreshAuditBtn" class="secondary">Refresh</button></div>
+        <div class="card filter-card"><div class="search-line"><input id="auditSearch" placeholder="Search action, user, record, role, field..." /><button id="clearAuditBtn" class="secondary">Clear</button></div></div>
+        <div id="auditList" class="audit-list"></div>
+        <div id="auditEmpty" class="empty hidden">No audit events found.</div>
+      </section>
+
+      <section id="backupView" class="view hidden">
+        <div class="page-head"><div><div class="eyebrow">DATA PROTECTION</div><h1>Backup & Restore</h1></div></div>
+        <div class="grid two backup-grid">
+          <div class="card">
+            <h2>Download Company Backup</h2>
+            <p class="muted">Creates a complete JSON backup of this company including members, PIN hashes, roles, settings, audit trail, verification data and stored photos. Keep the file secure.</p>
+            <button id="downloadBackupBtn" class="primary full">Download Backup</button>
+          </div>
+          <div class="card">
+            <h2>Restore Company Backup</h2>
+            <p class="muted">Restore a previous PRS.AssetVerify backup into this company. Current company username/password and company code are kept; operational data is replaced by the backup.</p>
+            <input id="restoreBackupInput" type="file" accept="application/json,.json" />
+            <button id="restoreBackupBtn" class="danger full">Restore Selected Backup</button>
+            <div class="info-box">After restore, all active sessions must re-select a team member using the restored member PIN.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="usageView" class="view hidden">
+        <div class="page-head"><div><div class="eyebrow">STORAGE</div><h1>Usage</h1></div></div>
+        <div class="card usage-card">
+          <div class="usage-label"><strong id="usageText">0 MB of 10 GB</strong><span id="usagePercent">0%</span></div>
+          <div class="progress"><div id="usageBar" class="progress-fill"></div></div>
+          <div class="usage-grid">
+            <div><span id="usagePhotos">0</span><small>Photos</small></div>
+            <div><span id="usageAssets">0</span><small>Asset rows</small></div>
+            <div><span id="usageBytes">0 MB</span><small>Photo storage</small></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="editCompanyView" class="view hidden">
+        <div class="page-head"><div><div class="eyebrow">COMPANY SETTINGS</div><h1>Edit Company</h1></div></div>
+        <div class="card">
+          <div class="grid two">
+            <label>Company Name *<input id="editCompanyName" /></label>
+            <label>Assignment Start Date *<input id="editCompanyStartDate" type="date" /></label>
+            <label>Company Code<input id="editCompanyCode" disabled /></label>
+            <label>Company Username *<input id="editCompanyUsername" autocomplete="username" /></label>
+            <label>New Company Password<input id="editCompanyPassword" type="password" autocomplete="new-password" placeholder="Leave blank to keep current password" /></label>
+          </div>
+          <button id="saveCompanyBtn" class="primary">Save Company Details</button>
+          <div class="danger-zone">
+            <h3>Danger Zone</h3>
+            <p>Deleting a company permanently deletes its members, roles, settings, verification records and photos.</p>
+            <button id="deleteCompanyBtn" class="danger" data-permission-button="company.delete">Delete Company</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="publicDeleteCompanyModal" class="modal hidden"><div class="modal-sheet small-sheet">
+    <div class="modal-head"><div><div class="eyebrow">DELETE COMPANY</div><h2 id="publicDeleteCompanyTitle">Delete Company</h2></div><button class="icon-btn" data-close="publicDeleteCompanyModal">✕</button></div>
+    <div class="danger-zone compact-danger">
+      <p>This permanently deletes the selected company and all cloud records/photos. Enter the name and PIN of a system Admin for that company.</p>
+    </div>
+    <div class="form-stack"><label>Admin Name *<input id="publicDeleteAdminName" autocomplete="off" placeholder="Exact admin name" /></label><label>Admin PIN *<input id="publicDeleteAdminPin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="4–6 digit PIN" /></label></div>
+    <button id="confirmPublicDeleteCompanyBtn" class="danger full">Permanently Delete Company</button>
+  </div></div>
+
+  <div id="loginModal" class="modal hidden"><div class="modal-sheet small-sheet">
+    <div class="modal-head"><div><div class="eyebrow">COMPANY LOGIN</div><h2 id="loginCompanyName">Company</h2></div><button class="icon-btn" data-close="loginModal">✕</button></div>
+    <div class="form-stack"><label>Company Username<input id="loginUsername" autocomplete="username" /></label><label>Company Password<input id="loginPassword" type="password" autocomplete="current-password" /></label></div>
+    <button id="loginBtn" class="primary full">Login</button>
+    <button id="forgotPasswordBtn" class="secondary full forgot-prominent">Forgot Company Password?</button>
+  </div></div>
+
+  <div id="forgotModal" class="modal hidden"><div class="modal-sheet small-sheet">
+    <div class="modal-head"><div><div class="eyebrow">PASSWORD RECOVERY</div><h2>Reset company password</h2></div><button class="icon-btn" data-close="forgotModal">✕</button></div>
+    <div id="forgotStep1"><p class="muted">A reset code will be sent to <strong>mahipal.office21@gmail.com</strong>.</p><label>Company Username<input id="forgotUsername" /></label><button id="sendResetBtn" class="primary full">Send Reset Code</button></div>
+    <div id="forgotStep2" class="hidden"><div class="form-stack"><label>6-digit Reset Code<input id="resetCode" inputmode="numeric" maxlength="6" /></label><label>New Company Password<input id="newPassword" type="password" /></label></div><button id="resetPasswordBtn" class="primary full">Set New Password</button></div>
+  </div></div>
+
+  <div id="memberSelectModal" class="modal hidden"><div class="modal-sheet small-sheet">
+    <div class="modal-head"><div><div class="eyebrow">WHO IS USING THE APP?</div><h2>Select Team Member</h2></div><button id="closeMemberSelectBtn" class="icon-btn" aria-label="Close member selection">✕</button></div>
+    <p class="muted">Select your name, then enter your personal member PIN.</p>
+    <div id="memberSelectList" class="member-select-list"></div>
+  </div></div>
+
+
+  <div id="memberPinModal" class="modal hidden"><div class="modal-sheet small-sheet">
+    <div class="modal-head"><div><div class="eyebrow">MEMBER SECURITY</div><h2 id="memberPinTitle">Enter Member PIN</h2></div><button class="icon-btn" data-close="memberPinModal">✕</button></div>
+    <p id="memberPinHint" class="muted"></p>
+    <label>Personal PIN<input id="memberPinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="4–6 digit PIN" /></label>
+    <button id="confirmMemberPinBtn" class="primary full">Continue</button>
+  </div></div>
+
+  <div id="detailModal" class="modal hidden"><div class="modal-sheet">
+    <div class="modal-head"><div><div class="eyebrow">NEW VERIFICATION</div><h2 id="detailTitle">Add details</h2></div><button id="discardPhotoBtn" class="icon-btn">✕</button></div>
+    <div id="photoPreviewArea" class="multi-photo-area"><img id="photoPreview" class="preview" alt="Verification photo" /><div id="photoThumbs" class="photo-thumbs"></div><div id="addPhotoControls" class="grid two"><button id="addCameraPhotoBtn" type="button" class="secondary">📷 Add Another Photo</button><button id="addGalleryPhotosBtn" type="button" class="secondary">▣ Add Gallery Photos</button></div></div>
+    <div id="scanOnlyPreview" class="scan-only-preview hidden">▦ <strong id="scanOnlyCode"></strong></div>
+    <div class="grid two">
+      <label>Date<input id="capturedDateInput" type="date" /></label>
+      <label>Time<input id="capturedTimeInput" type="time" step="1" /></label>
+      <label>Latitude <small>(Optional · auto-detected)</small><input id="latitude" inputmode="decimal" placeholder="Auto-detected when location is allowed" /></label>
+      <label>Longitude <small>(Optional · auto-detected)</small><input id="longitude" inputmode="decimal" placeholder="Auto-detected when location is allowed" /></label>
+      <label>GPS Accuracy (metres) <small>(Optional · auto-detected)</small><input id="gpsAccuracy" inputmode="decimal" placeholder="Auto-detected when available" /></label>
+    </div>
+    <div id="gpsNote" class="field-note"></div>
+
+    <div class="capture-step-card">
+      <div class="section-title-row">
+        <div><div class="eyebrow">STEP 1</div><h3>Sticky Fields</h3><p>Complete the location / sticky information for this verification. Variable Fields will appear automatically as soon as all Sticky Fields are completed.</p></div>
+        <span class="pill">Sticky</span>
+      </div>
+      <div id="captureStickyFieldsContainer" class="grid two"></div>
+      <div id="stickyCompletionHint" class="field-note"></div>
+    </div>
+
+    <div id="detailStep2" class="hidden">
+      <div class="capture-step-card top-gap">
+        <div class="section-title-row">
+          <div><div class="eyebrow">STEP 2</div><h3>Variable Fields</h3><p>Complete the variable information, review the asset details, then save the verification.</p></div>
+          <span class="pill">Variable</span>
+        </div>
+        <div id="variableFieldsContainer" class="form-stack"></div>
+      </div>
+      <div class="assets-panel">
+        <div class="assets-panel-head"><div><h3>Assets in this verification</h3><span id="aiStatus" class="field-note"></span></div><button id="retryAiBtn" class="secondary mini-btn">Retry AI</button></div>
+        <div id="assetRows" class="asset-rows"></div>
+        <button id="addAssetRowBtn" class="secondary full-inline">＋ Add Asset Row</button>
+      </div>
+      <div class="save-step-note"><strong>STEP 3 · Save</strong><span>Once saved, this verification is included automatically in the Excel export.</span></div>
+      <button id="savePhotoBtn" class="primary full">Save Verification</button>
+    </div>
+  </div></div>
+
+  <div id="editRecordModal" class="modal hidden"><div class="modal-sheet">
+    <div class="modal-head"><div><div class="eyebrow">EDIT VERIFICATION</div><h2>Edit saved record</h2></div><button class="icon-btn" data-close="editRecordModal">✕</button></div>
+    <div id="editPhotoArea"><img id="editPreview" class="preview" alt="Verification photo" /><div id="editPhotoThumbs" class="photo-thumbs"></div></div>
+    <div id="editScanPreview" class="scan-only-preview hidden"></div>
+    <div id="editStickyFields" class="grid two"></div>
+    <div class="grid two">
+      <label>Date<input id="editCapturedDate" type="date" /></label>
+      <label>Time<input id="editCapturedTime" type="time" step="1" /></label>
+      <label>Latitude <small>(Optional)</small><input id="editLatitude" inputmode="decimal" /></label>
+      <label>Longitude <small>(Optional)</small><input id="editLongitude" inputmode="decimal" /></label>
+      <label>GPS Accuracy (metres) <small>(Optional)</small><input id="editGpsAccuracy" inputmode="decimal" /></label>
+    </div>
+    <div id="editVariableFields" class="form-stack"></div>
+    <div class="assets-panel"><div class="assets-panel-head"><h3>Assets</h3><button id="editAddAssetBtn" class="secondary mini-btn">＋ Add</button></div><div id="editAssetRows" class="asset-rows"></div></div>
+    <button id="saveRecordEditBtn" class="primary full">Save Changes</button>
+  </div></div>
+
+  <div id="scannerModal" class="modal hidden"><div class="modal-sheet small-sheet">
+    <div class="modal-head"><div><div class="eyebrow">SCAN & VERIFY</div><h2>Universal Barcode / QR scanner</h2></div><button id="closeScannerBtn" class="icon-btn">✕</button></div>
+    <div id="qrReader" class="qr-reader"></div>
+    <div class="form-stack">
+      <label>Barcode Type
+        <select id="barcodeTypeSelect">
+          <option value="auto">Auto — every supported symbology</option>
+          <optgroup label="2D / matrix">
+          <option value="all2d">All 2D codes</option>
+          <option value="qr">QR Code (incl. Micro QR / rMQR)</option>
+          <option value="datamatrix">Data Matrix (incl. GS1)</option>
+          <option value="pdf417">PDF417</option>
+          <option value="aztec">Aztec</option>
+          </optgroup>
+          <optgroup label="Linear">
+          <option value="ean">EAN / UPC</option>
+          <option value="databar">GS1 DataBar</option>
+          <option value="codabar">Codabar</option>
+          <option value="code128">Code 128</option>
+          <option value="gs1128">GS1-128 (UCC/EAN-128)</option>
+          <option value="code11">Code 11</option>
+          <option value="itf">Interleaved 2 of 5 (ITF)</option>
+          <option value="code39">Code 39</option>
+          <option value="code39ext">Code 39 Full ASCII / Extended</option>
+          <option value="code93">Code 93</option>
+          <option value="msi">MSI / MSI Plessey</option>
+          <option value="telepen">Telepen Alpha</option>
+          <option value="pharmacode1">Pharmacode One-Track</option>
+          <option value="pharmacode2">Pharmacode Two-Track</option>
+          <option value="flattermarken">Flattermarken</option>
+          </optgroup>
+        </select>
+      </label>
+      <label>Scanned Code<input id="manualScanCode" placeholder="Scan or enter manually" /></label>
+      <div id="scanDetectedList" class="scan-code-list"></div>
+    </div>
+    <div class="grid two"><button id="startScannerBtn" class="primary">Start Camera</button><label id="iosScanCameraLabel" for="prsIOSScanCameraInput" class="primary" hidden role="button" style="align-items:center;justify-content:center;text-align:center;cursor:pointer;min-height:44px;padding:10px 14px;border-radius:10px;">Open Camera &amp; Scan</label><button id="scanImageBtn" class="secondary">Scan Image</button></div>
+    <button id="useScanCodeBtn" class="success full">Use Code(s) & Verify</button>
+    <p id="scanStatus" class="field-note"></p><p class="field-note"><strong>Scanner V3 · Universal live scanning:</strong> decodes every linear symbology, the full QR family, Data Matrix, Aztec, PDF417, MaxiCode and GS1 DataBar directly from the live camera, plus PRS native Code-11. GS1 element strings are parsed into their Application Identifiers and written straight into the matching fields. Codes without a check character are confirmed on two consecutive reads before being accepted.</p>
+  </div></div>
+
+  <div id="userModal" class="modal hidden"><div class="modal-sheet small-sheet">
+    <div class="modal-head"><div><div class="eyebrow">TEAM MEMBER</div><h2 id="userModalTitle">Add Team Member</h2></div><button class="icon-btn" data-close="userModal">✕</button></div>
+    <div class="form-stack"><label>Full Name *<input id="userName" /></label><label>Role *<select id="userRole"></select></label><label>Member PIN <input id="userPin" type="password" inputmode="numeric" maxlength="6" placeholder="4–6 digits; leave blank when editing to keep current PIN" /></label></div>
+    <button id="saveUserBtn" class="primary full">Save Team Member</button>
+  </div></div>
+
+  <div id="roleModal" class="modal hidden"><div class="modal-sheet">
+    <div class="modal-head"><div><div class="eyebrow">ROLE DESIGNER</div><h2 id="roleModalTitle">Create Role</h2></div><button class="icon-btn" data-close="roleModal">✕</button></div>
+    <div class="grid two"><label>Role Name *<input id="roleName" /></label><label>Description<input id="roleDescription" /></label></div>
+    <h3>Permissions</h3>
+    <div id="permissionChecklist" class="permission-grid"></div>
+    <h3>Assign this role to team members</h3>
+    <div id="roleMemberAssignments" class="assignment-grid"></div>
+    <button id="saveRoleBtn" class="primary full">Save Role</button>
+  </div></div>
+
+  <div id="fieldModal" class="modal hidden"><div class="modal-sheet small-sheet">
+    <div class="modal-head"><div><div class="eyebrow">FIELD MASTER</div><h2 id="fieldModalTitle">Add Field</h2></div><button class="icon-btn" data-close="fieldModal">✕</button></div>
+    <div class="form-stack">
+      <label>Field Label *<input id="fieldLabel" /></label>
+      <label>Input Type<select id="fieldType"><option value="text">Text</option><option value="number">Number</option><option value="textarea">Long Text</option><option value="select">Dropdown</option><option value="member">Team Member</option></select></label>
+      <label id="fieldOptionsWrap" class="hidden">Dropdown Options<input id="fieldOptions" placeholder="Option 1, Option 2, Option 3" /></label>
+    </div>
+    <button id="saveFieldBtn" class="primary full">Save Field</button>
+  </div></div>
+
+  <div id="exportModal" class="modal hidden"><div class="modal-sheet small-sheet">
+    <div class="modal-head"><div><div class="eyebrow">EXCEL EXPORT</div><h2>Choose download</h2></div><button class="icon-btn" data-close="exportModal">✕</button></div>
+    <p class="muted">Version 2.0 prepares and stores <strong>both</strong> variants for the same record snapshot. Choose which one you want to download now.</p>
+    <div class="export-choice-grid">
+      <button id="exportWithPhotosBtn" class="primary full">Export with Photos</button>
+      <button id="exportWithoutPhotosBtn" class="secondary full">Export without Photos</button>
+    </div>
+    <div id="exportProgress" class="field-note"></div>
+  </div></div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="prs-scan.js?v=300"></script>
+  <script src="app.js?v=300-universal-scanner"></script>
+</body>
+</html>
