@@ -618,3 +618,156 @@ button { font-family: inherit; }
   .member-row, .member-row-v6 { grid-template-columns: 1fr auto; }
   .grid.three { grid-template-columns: 1fr; }
 }
+
+/* ===========================================================================
+   WELCOME SCREEN — Broadsheet treatment
+   Tokens lifted from the PRS AssetVerify Landing design: warm paper ground,
+   near-black ink, cyan and magenta process accents, Source Serif throughout,
+   near-square corners. Scoped to the welcome and company-list screens so the
+   rest of the app is untouched.
+   =========================================================================== */
+:root {
+  --bs-bg:       #f3f2f2;
+  --bs-surface:  #eae9e9;
+  --bs-ink:      #201e1d;
+  --bs-cyan:     #0088b0;
+  --bs-magenta:  #d6006c;
+  --bs-rule:     rgba(32, 30, 29, .16);
+  --bs-serif:    "Source Serif 4", "Source Serif Pro", Georgia, "Times New Roman", serif;
+}
+
+/* The header doubles as the design's nav while the welcome screen is up. */
+body:has(#welcomeView:not(.hidden)) .topbar,
+body:has(#existingCompanyView:not(.hidden)) .topbar,
+body:has(#createCompanyView:not(.hidden)) .topbar {
+  background: var(--bs-bg);
+  color: var(--bs-ink);
+  border-bottom: 0;
+}
+body:has(#welcomeView:not(.hidden)) .brand-center strong,
+body:has(#existingCompanyView:not(.hidden)) .brand-center strong,
+body:has(#createCompanyView:not(.hidden)) .brand-center strong {
+  font-family: var(--bs-serif);
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+body:has(#welcomeView:not(.hidden)) .icon-btn:hover { background: var(--bs-surface); }
+
+#welcomeView.welcome-view {
+  background: var(--bs-bg);
+  color: var(--bs-ink);
+  font-family: var(--bs-serif);
+  min-height: 84dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 clamp(20px, 5vw, 72px) calc(40px + var(--safe-b));
+  max-width: 1200px;
+}
+
+/* The brand already sits in the header, exactly as the design's nav does. */
+#welcomeView .welcome-logo { display: none; }
+
+#welcomeView .welcome-card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+}
+
+#welcomeView h1 {
+  font-family: var(--bs-serif);
+  font-weight: 600;
+  font-size: clamp(40px, 8.4vw, 80px);
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  margin: 0 0 0 -0.035em;
+  color: var(--bs-ink);
+  max-width: 14ch;
+}
+
+#welcomeView .welcome-card p {
+  font-family: var(--bs-serif);
+  font-size: 16px;
+  line-height: 1.5;
+  color: rgba(32, 30, 29, .66);
+  margin: 20px 0 0;
+  max-width: 44ch;
+}
+
+#welcomeView .welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-top: 28px;
+}
+
+#welcomeView .welcome-actions .primary,
+#welcomeView .welcome-actions .secondary {
+  font-family: var(--bs-serif);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.2;
+  min-height: 46px;
+  border-radius: 2px;
+  padding: 10px 18px;
+  border: 1px solid transparent;
+}
+#welcomeView .welcome-actions .primary {
+  background: var(--bs-cyan);
+  color: var(--bs-bg);
+}
+#welcomeView .welcome-actions .primary:hover { background: #006786; filter: none; }
+#welcomeView .welcome-actions .secondary {
+  background: transparent;
+  color: var(--bs-cyan);
+  padding-inline: 5px;
+}
+#welcomeView .welcome-actions .secondary:hover { background: transparent; color: #006786; }
+
+/* A single magenta rule under the headline — the second process ink, used once. */
+#welcomeView h1::after {
+  content: "";
+  display: block;
+  width: 96px;
+  height: 6px;
+  margin-top: 26px;
+  background: var(--bs-magenta);
+}
+
+/* Company list carries the same ground so the two screens read as one piece. */
+#existingCompanyView, #createCompanyView {
+  background: var(--bs-bg);
+  font-family: var(--bs-serif);
+  max-width: 1200px;
+  padding-inline: clamp(20px, 5vw, 72px);
+}
+#existingCompanyView h1, #createCompanyView h1 {
+  font-family: var(--bs-serif); font-weight: 600;
+  font-size: clamp(28px, 5vw, 44px); letter-spacing: -0.02em;
+}
+#existingCompanyView .company-row {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--bs-rule);
+  border-radius: 0;
+  padding: 18px 0;
+}
+#existingCompanyView .company-open-btn strong {
+  font-family: var(--bs-serif); font-weight: 600; font-size: 19px; color: var(--bs-ink);
+}
+#existingCompanyView .company-open-btn span { color: rgba(32, 30, 29, .55); }
+#existingCompanyView .status-active {
+  background: transparent; color: var(--bs-cyan);
+  border: 1px solid var(--bs-cyan); border-radius: 2px; font-weight: 600;
+}
+#existingCompanyView .empty {
+  background: transparent; border: 1px dashed var(--bs-rule);
+  border-radius: 2px; font-family: var(--bs-serif);
+}
+
+@media (min-width: 900px) {
+  #welcomeView.welcome-view { padding-top: 112px; padding-bottom: 84px; justify-content: flex-start; }
+  #existingCompanyView .company-row { grid-template-columns: 1fr auto auto auto auto; }
+}

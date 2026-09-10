@@ -1,11 +1,11 @@
-const CACHE = 'prs-assetverify-v3-root';
+const CACHE = 'prs-assetverify-v3-1-broadsheet';
 const CORE = [
   './',
   './index.html',
   './app.js?v=300-universal-scanner',
   './prs-scan.js?v=300',
   './scan-worker.js?v=300',
-  './styles.css?v=300',
+  './styles.css?v=310',
   './manifest.webmanifest',
   './icon.svg'
 ];
@@ -41,7 +41,7 @@ self.addEventListener('fetch', event => {
 
   const url = new URL(request.url);
   const sameOrigin = url.origin === self.location.origin;
-  const trustedRuntimeAsset = url.hostname === 'unpkg.com' || url.hostname === 'cdn.jsdelivr.net' || url.hostname === 'esm.sh';
+  const trustedRuntimeAsset = url.hostname === 'unpkg.com' || url.hostname === 'cdn.jsdelivr.net' || url.hostname === 'esm.sh' || url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
   if (!sameOrigin && !trustedRuntimeAsset) return;
 
   // Navigation and all same-origin application files are network-first. This is

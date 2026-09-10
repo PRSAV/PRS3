@@ -11,7 +11,10 @@
   <title>PRS.AssetVerify V3</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=300" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" />
+  <link rel="stylesheet" href="styles.css?v=310" />
   <script src="https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <!-- Scanner decoder is loaded on demand by app.js. This avoids a mobile
@@ -63,10 +66,10 @@
       <section id="welcomeView" class="view welcome-view">
         <div class="welcome-card">
           <div class="welcome-logo">PRS.AssetVerify 2.0</div>
-          <h1>PRS Asset Verification App</h1>
-          <p>Create a new company workspace, enter an existing company, or restore a saved company backup.</p>
+          <h1>PRS Asset Verification Tool.</h1>
+          <p>Capture, verify and reconcile fixed assets in the field.</p>
           <div class="welcome-actions">
-            <button id="openCreateCompanyBtn" class="primary large">＋ Create Company</button>
+            <button id="openCreateCompanyBtn" class="primary large">Create Company</button>
             <button id="openExistingCompanyBtn" class="secondary large">Existing Company</button>
           </div>
         </div>
